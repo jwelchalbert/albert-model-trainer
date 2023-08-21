@@ -9,7 +9,8 @@ from typing import Any, Dict, List, Tuple
 import joblib
 import numpy as np
 import pandas as pd
-from albert_model_trainer.base.hyperparameter import HyperParameterSet
+from albert_model_trainer.base.callback import Callback
+from albert_model_trainer.base.hyperparameter import HyperParameterTuneSet
 import ray
 from ray import tune
 from ray.tune.search import ConcurrencyLimiter
@@ -54,7 +55,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 from tqdm.auto import tqdm
-
+from albert_model_trainer.base.metrics import Metric, PerformanceMetrics
 from albert_model_trainer.base.model import ModelTrainer
 
 
@@ -63,23 +64,41 @@ from albert_model_trainer.base.model import ModelTrainer
 # Ridge(random_state=self.random_state),
 # {"alpha": tune.loguniform(0.001, 10.0)},
 # ),
-class RidgeRegressionHyperparameterSet(HyperParameterSet):
-    DEFAULT_ALPHA = tune.loguniform(0.001,10.0)
+class RidgeRegressionHyperparameterSet(HyperParameterTuneSet):
+    DEFAULT_ALPHA = tune.loguniform(0.001, 10.0)
 
     def __init__(self, **kwargs) -> None:
-        self.parameters = {
-            "alpha" : kwargs.get('alpha',self.DEFAULT_ALPHA)
-        }
+        self.parameters = {"alpha": kwargs.get("alpha", self.DEFAULT_ALPHA)}
 
 
 class RidgeRegressionTrainer(ModelTrainer):
-    def __init__(self, hyperparameters: RidgeRegressionHyperparameterSet):
-        super().__init__(hyperparameters)
-        self.model = Ridge()
+    def __init__(
+        self,
+        hyperparameters: HyperParameterTuneSet | None = None,
+        num_cv_folds: int = 5,
+        evaluation_metric: str | Metric = "r2",
+        random_state: int = 42,
+        metrics: PerformanceMetrics | None = None,
+        callbacks: List[Callback] | None = None,
+        scaling_columns: List[int] | None = None,
+        num_hyperopt_samples: int = 100,
+    ):
+        if hyperparameters is None:
+            hyperparameters = RidgeRegressionHyperparameterSet()
 
-    def fit(self, X:Any, y:Any):
+        super().__init__(
+            hyperparameters,
+            num_cv_folds,
+            evaluation_metric,
+            random_state,
+            metrics,
+            callbacks,
+            scaling_columns,
+            num_hyperopt_samples,
+        )
+
+        self.model = Ridge(random_state=random_state)
+
+    def fit(self, X: Any, y: Any):
         if self.model is not None:
-            self.model.fit(X,y)
-
-
-
+            self.model.fit(X, y)

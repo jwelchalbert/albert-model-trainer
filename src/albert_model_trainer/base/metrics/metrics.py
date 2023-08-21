@@ -12,6 +12,9 @@ from sklearn.metrics import (
     r2_score,
 )
 
+METRIC_MODE_MIN = "min"
+METRIC_MODE_MAX = "max"
+
 
 class Metric:
     def evaluate(self, true_values: Any, predictions: Any, **kwargs) -> float:
@@ -29,19 +32,10 @@ class Metric:
             "The __str__ method should be overridden in the subclass."
         )
 
-
-class PerformanceMetrics:
-    def __init__(self, metrics: List[Metric]):
-        self.metrics = metrics
-        self.results = {}
-
-    def evaluate_all(self, true_values: Any, predictions: Any):
-        for metric in self.metrics:
-            self.results[str(metric)] = metric.evaluate(true_values, predictions)
-
-    def print_summary(self):
-        for metric_name, result in self.results.items():
-            print(f"{metric_name}: {result}")
+    def optimal_mode(self) -> str:
+        raise NotImplementedError(
+            "The optimal_mode method should be overridden in the subclass."
+        )
 
 
 class AccuracyMetric(Metric):
@@ -54,6 +48,9 @@ class AccuracyMetric(Metric):
     def __str__(self) -> str:
         return "Accuracy"
 
+    def optimal_mode(self) -> str:
+        return METRIC_MODE_MAX
+
 
 class PrecisionMetric(Metric):
     def evaluate(self, true_values: Any, predictions: Any) -> float:
@@ -64,6 +61,9 @@ class PrecisionMetric(Metric):
 
     def __str__(self) -> str:
         return "Precision"
+
+    def optimal_mode(self) -> str:
+        return METRIC_MODE_MAX
 
 
 class MAEMetric(Metric):
@@ -76,6 +76,9 @@ class MAEMetric(Metric):
     def __str__(self) -> str:
         return "Mean Absolute Error"
 
+    def optimal_mode(self) -> str:
+        return METRIC_MODE_MIN
+
 
 class MSEMetric(Metric):
     def evaluate(self, true_values: Any, predictions: Any) -> float:
@@ -87,6 +90,9 @@ class MSEMetric(Metric):
     def __str__(self) -> str:
         return "Mean Squared Error"
 
+    def optimal_mode(self) -> str:
+        return METRIC_MODE_MIN
+
 
 class R2Metric(Metric):
     def evaluate(self, true_values: Any, predictions: Any) -> float:
@@ -97,3 +103,6 @@ class R2Metric(Metric):
 
     def __str__(self) -> str:
         return "R^2 Score"
+
+    def optimal_mode(self) -> str:
+        return METRIC_MODE_MAX
