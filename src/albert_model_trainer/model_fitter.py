@@ -10,39 +10,21 @@ import joblib
 import numpy as np
 import pandas as pd
 import ray
+from albert.internal.utils import hash_string, remove_keys_from_dict
 from ray import tune
 from ray.tune.search import ConcurrencyLimiter
 from ray.tune.search.hyperopt import HyperOptSearch
-from sklearn.base import (
-    BaseEstimator,
-    MultiOutputMixin,
-    RegressorMixin,
-    TransformerMixin,
-)
+from sklearn.base import (BaseEstimator, MultiOutputMixin, RegressorMixin,
+                          TransformerMixin)
 from sklearn.base import clone as clone_model
 from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import (
-    AdaBoostRegressor,
-    ExtraTreesRegressor,
-    GradientBoostingRegressor,
-    RandomForestRegressor,
-)
-from sklearn.linear_model import (
-    ARDRegression,
-    BayesianRidge,
-    ElasticNet,
-    HuberRegressor,
-    Lars,
-    Lasso,
-    LassoLars,
-    LinearRegression,
-    OrthogonalMatchingPursuit,
-    PassiveAggressiveRegressor,
-    RANSACRegressor,
-    Ridge,
-    SGDRegressor,
-    TheilSenRegressor,
-)
+from sklearn.ensemble import (AdaBoostRegressor, ExtraTreesRegressor,
+                              GradientBoostingRegressor, RandomForestRegressor)
+from sklearn.linear_model import (ARDRegression, BayesianRidge, ElasticNet,
+                                  HuberRegressor, Lars, Lasso, LassoLars,
+                                  LinearRegression, OrthogonalMatchingPursuit,
+                                  PassiveAggressiveRegressor, RANSACRegressor,
+                                  Ridge, SGDRegressor, TheilSenRegressor)
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import KFold
 from sklearn.multioutput import MultiOutputRegressor
@@ -53,8 +35,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
 from tqdm.auto import tqdm
-
-from albert.internal.utils import hash_string, remove_keys_from_dict
 
 warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
 
@@ -612,9 +592,10 @@ class SklearnRegressorEvaluator(BaseEstimator, RegressorMixin):
             import matplotlib
 
             matplotlib.use("Agg")
-            import matplotlib.pyplot as plt
-            import io
             import base64
+            import io
+
+            import matplotlib.pyplot as plt
 
             # Generate a prediction vs observation plot for all folds
             fig = plt.figure(figsize=(10, 10))

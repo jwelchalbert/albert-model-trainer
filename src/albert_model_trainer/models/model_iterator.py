@@ -1,6 +1,7 @@
-import os
 import importlib.util
 import inspect
+import os
+
 from albert_model_trainer.base.model import ModelTrainer
 
 model_file_dir = os.path.dirname(__file__)

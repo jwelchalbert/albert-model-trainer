@@ -1,62 +1,33 @@
-import copy
-import hashlib
-import json
-import logging
-import os
-import warnings
-from typing import Any, Dict, List, Tuple, Callable
+from typing import Any, Dict
 
-import joblib
-import numpy as np
-import pandas as pd
-import ray
-from ray import tune
-from ray.tune.search import ConcurrencyLimiter
-from ray.tune.search.hyperopt import HyperOptSearch
-from sklearn.base import (
-    BaseEstimator,
-    MultiOutputMixin,
-    RegressorMixin,
-    TransformerMixin,
-)
-from sklearn.base import clone as clone_model
-from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import (
-    AdaBoostRegressor,
-    ExtraTreesRegressor,
-    GradientBoostingRegressor,
-    RandomForestRegressor,
-)
-from sklearn.linear_model import (
-    ARDRegression,
-    BayesianRidge,
-    ElasticNet,
-    HuberRegressor,
-    Lars,
-    Lasso,
-    LassoLars,
-    LinearRegression,
-    OrthogonalMatchingPursuit,
-    PassiveAggressiveRegressor,
-    RANSACRegressor,
-    Ridge,
-    SGDRegressor,
-    TheilSenRegressor,
-)
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import KFold
-from sklearn.multioutput import MultiOutputRegressor
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.neural_network import MLPRegressor
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVR
-from sklearn.tree import DecisionTreeRegressor
-from tqdm.auto import tqdm
-from albert_model_trainer.base.model import ModelTrainer
+from sklearn.base import BaseEstimator, RegressorMixin
+
 from albert_model_trainer.base.callback import Callback, CallbackInvoker
-
 from albert_model_trainer.base.metrics import Metric, PerformanceMetrics
+from albert_model_trainer.base.model import ModelTrainer
+
+
+class ResultTracker:
+    def __init__(self, num_outputs) -> None:
+        self.num_outputs = num_outputs
+        self.params = {i: [] for i in range(num_outputs)}
+
+    def add_result(
+        self, output_idx: int, name: str, score: float, parameters: dict[str, Any]
+    ):
+        if output_idx > self.num_outputs:
+            raise ValueError(
+                f"requested output idx is greater than the expected number of outputs -- got [{output_idx}] -- exp [{self.num_outputs-1}] max"
+            )
+        self.params[output_idx].append((name, score, parameters))
+
+    def get_best_params(self, return_max: bool):
+        best_all = []
+        for i in range(self.num_outputs):
+            best_params = self.params[i]
+            best_params = sorted(best_params, key=lambda x: x[1], reverse=return_max)
+            best_all.append(best_params[0])
+        return best_all
 
 
 class SklearnAutoRegressor(BaseEstimator, RegressorMixin, CallbackInvoker):
@@ -116,18 +87,16 @@ class SklearnAutoRegressor(BaseEstimator, RegressorMixin, CallbackInvoker):
             elif isinstance(models, list):
                 self.models = {}
                 for mm in models:
-                    self.models[mm.name()] = mm
+                    self.add_model(mm, True)
         else:
             self.models = {}
-
-        self.best_params = []
 
     def add_model(self, model: ModelTrainer, raise_on_exists=False):
         if model.name() not in self.models:
             # We override the evaluation metric on the model with the one requested at the high level
             # this makes sure everyone is operating on the same space
-            model.metrics = self.metrics
-            model.evaluation_metric = self.evaluation_metric
+            model.config.metrics = self.metrics
+            model.config.evaluation_metric = self.evaluation_metric
             model.callbacks = self.callbacks
             self.models[model.name()] = model
         else:
@@ -148,6 +117,8 @@ class SklearnAutoRegressor(BaseEstimator, RegressorMixin, CallbackInvoker):
         if (len(y.shape) > 1) and (y.shape[-1] > 1):
             self.multi_output = True
 
+        self.best_params = ResultTracker(y.shape[-1])
+
         # We will iterate through each model and do a full hyperparameter tune on it
         for idx, (model_name, model_trainer) in enumerate(self.models.items()):
             self.trigger_callback(
@@ -159,10 +130,24 @@ class SklearnAutoRegressor(BaseEstimator, RegressorMixin, CallbackInvoker):
                 },
             )
 
-            tdata, best_params = model_trainer.fit_tune(X, y)
-
-            self.best_params.append((model_name, tdata, best_params))
+            # If we have multiple outputs then we need to build one model for each output
+            for i in range(y.shape[-1]):
+                tdata, best_params = model_trainer.fit_tune(X, y[:, i])
+                self.best_params.add_result(
+                    i, model_name, tdata[self.evaluation_metric], best_params
+                )
+                if self.multi_output:
+                    # In multi output cases indicate when we finish one of the outputs
+                    self.trigger_callback(
+                        "on_tune_multi_output_end",
+                        {"trainer": model_trainer, "output_num": i},
+                    )
 
             self.trigger_callback(
                 "on_tune_end", {"trainer": model_trainer, "model_idx": idx}
+            )
+
+            return self.best_params.get_best_params(
+                self.metrics.get_metric_obj(self.evaluation_metric).optimal_mode()
+                == "max"
             )

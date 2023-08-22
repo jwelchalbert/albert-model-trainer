@@ -13,36 +13,17 @@ import ray
 from ray import tune
 from ray.tune.search import ConcurrencyLimiter
 from ray.tune.search.hyperopt import HyperOptSearch
-from sklearn.base import (
-    BaseEstimator,
-    MultiOutputMixin,
-    RegressorMixin,
-    TransformerMixin,
-)
+from sklearn.base import (BaseEstimator, MultiOutputMixin, RegressorMixin,
+                          TransformerMixin)
 from sklearn.base import clone as clone_model
 from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import (
-    AdaBoostRegressor,
-    ExtraTreesRegressor,
-    GradientBoostingRegressor,
-    RandomForestRegressor,
-)
-from sklearn.linear_model import (
-    ARDRegression,
-    BayesianRidge,
-    ElasticNet,
-    HuberRegressor,
-    Lars,
-    Lasso,
-    LassoLars,
-    LinearRegression,
-    OrthogonalMatchingPursuit,
-    PassiveAggressiveRegressor,
-    RANSACRegressor,
-    Ridge,
-    SGDRegressor,
-    TheilSenRegressor,
-)
+from sklearn.ensemble import (AdaBoostRegressor, ExtraTreesRegressor,
+                              GradientBoostingRegressor, RandomForestRegressor)
+from sklearn.linear_model import (ARDRegression, BayesianRidge, ElasticNet,
+                                  HuberRegressor, Lars, Lasso, LassoLars,
+                                  LinearRegression, OrthogonalMatchingPursuit,
+                                  PassiveAggressiveRegressor, RANSACRegressor,
+                                  Ridge, SGDRegressor, TheilSenRegressor)
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import KFold
 from sklearn.multioutput import MultiOutputRegressor

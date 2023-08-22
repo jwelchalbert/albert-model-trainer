@@ -1,8 +1,11 @@
 import inspect
-import albert_model_trainer.base.metrics.metrics as metrics
-from .metrics import Metric
-from typing import List, Tuple, Dict, Any
+from typing import Any, Dict, List, Tuple
+
 import numpy as np
+
+import albert_model_trainer.base.metrics.metrics as metrics
+
+from .metrics import Metric
 
 
 def generate_metric_mapping():

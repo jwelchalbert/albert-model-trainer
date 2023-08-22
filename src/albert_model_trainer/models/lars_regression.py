@@ -1,15 +1,12 @@
 from typing import Any
 
-from albert_model_trainer.base.hyperparameter import HyperParameterTuneSet
 from ray import tune
-from sklearn.linear_model import (
-    Lars,
-)
+from sklearn.linear_model import Lars
+
+from albert_model_trainer.base.hyperparameter import HyperParameterTuneSet
 from albert_model_trainer.base.model import ModelTrainer
-from albert_model_trainer.base.model_config import (
-    ModelConfigurationBase,
-    validate_config_type,
-)
+from albert_model_trainer.base.model_config import (ModelConfigurationBase,
+                                                    validate_config_type)
 
 
 class LarsRegressionHyperparameterSet(HyperParameterTuneSet):

@@ -1,7 +1,8 @@
 from typing import List
+
+from .callback import Callback
 from .hyperparameter import HyperParameterTuneSet
 from .metrics import Metric, PerformanceMetrics
-from .callback import Callback
 
 
 def validate_config_type(config, expected_hyperparameter_type):

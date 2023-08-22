@@ -1,9 +1,10 @@
-from typing import Any, Dict, Optional, Type
+# trunk-ignore-all(ruff/F821)
+
+from typing import Dict
+
 from albert_model_trainer.base.metrics import (
-    PerformanceMetrics,
-    AggregatePerformanceMetrics,
-    NamedAggregatePerformanceMetrics,
-)
+    AggregatePerformanceMetrics, NamedAggregatePerformanceMetrics,
+    PerformanceMetrics)
 
 
 class Callback:
@@ -11,10 +12,16 @@ class Callback:
     def state_key(self) -> str:
         return self.__class__.__qualname__
 
-    def setup(self, trainer: "ModelTrainer") -> None:
+    def setup(
+        self,
+        trainer: "ModelTrainer",
+    ) -> None:
         """Signals when tune begins."""
 
-    def teardown(self, trainer: "ModelTrainer") -> None:
+    def teardown(
+        self,
+        trainer: "ModelTrainer",
+    ) -> None:
         """Signals when tune ends."""
 
     def on_ray_pre_init(self, trainer: "ModelTrainer") -> None:
@@ -24,7 +31,10 @@ class Callback:
         """Signals right before ray.shutdown() not sure what this will be useful for."""
 
     def on_tune_start(
-        self, trainer: "ModelTrainer", model_idx: int, num_features: int
+        self,
+        trainer: "ModelTrainer",
+        model_idx: int,
+        num_features: int,
     ) -> None:
         """Signals when tune starts on a given Model Training Operation."""
 
@@ -51,6 +61,13 @@ class Callback:
 
     def on_tune_step_complete(self, trainer: "ModelTrainer") -> None:
         """Signals when a single hyperparameter tune step has completed during a tune session."""
+
+    def on_tune_multi_output_end(
+        self,
+        trainer: "ModelTrainer",
+        output_num: int,
+    ) -> None:
+        """Signals when a multi output hyperparameter tune session has completed."""
 
     def on_tune_end(self, trainer: "ModelTrainer", model_idx: int) -> None:
         """Signals when tune stops/completes on a given model."""
