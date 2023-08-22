@@ -1,6 +1,6 @@
 import logging
 import warnings
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, Tuple, Union
 
 import numpy as np
 import ray
@@ -13,15 +13,11 @@ from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler
 from tqdm.auto import tqdm
-import copy
 
-from albert_model_trainer.base.callback import Callback, CallbackInvoker
+from albert_model_trainer.base.callback import CallbackInvoker
 from albert_model_trainer.base.hyperparameter import HyperParameterTuneSet
-from albert_model_trainer.base.metrics import (
-    Metric,
-    NamedAggregatePerformanceMetrics,
-    PerformanceMetrics,
-)
+from albert_model_trainer.base.metrics import NamedAggregatePerformanceMetrics
+from albert_model_trainer.base.model_config import ModelConfigurationBase
 
 warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
 logger = logging.getLogger("albert.log")
@@ -43,51 +39,15 @@ def is_notebook() -> bool:
 class ModelTrainer(CallbackInvoker):
     def __init__(
         self,
-        hyperparameters: HyperParameterTuneSet | None = None,
-        num_cv_folds: int = 5,
-        evaluation_metric: str | Metric = "r2",
-        random_state: int = 42,
-        metrics: PerformanceMetrics | None = None,
-        callbacks: List[Callback] | None = None,
-        scaling_columns: List[int] | None = None,
-        num_hyperopt_samples: int = 100,
+        config: ModelConfigurationBase,
     ):
-        super().__init__(callbacks)
-        self.hyperparameters = hyperparameters
+        super().__init__(config.callbacks)
+        self.config = config
         self.model: BaseEstimator | None = None
-        self.num_cv_folds = num_cv_folds
-        self.random_state = random_state
         self.optimal_parameters = {}
-        self.scaling_columns = scaling_columns
-        self.num_hyperopt_samples = num_hyperopt_samples
-
-        if metrics is None:
-            self.metrics = PerformanceMetrics()
-        else:
-            self.metrics = metrics
-
-        if isinstance(evaluation_metric, str):
-            if not self.metrics.has_metric(evaluation_metric):
-                self.metrics.add_metric(evaluation_metric)
-            self.evaluation_metric = evaluation_metric
-
-        elif isinstance(evaluation_metric, Metric):
-            if not self.metrics.has_metric(evaluation_metric.shortnames()[0]):
-                self.metrics.add_metric(evaluation_metric.shortnames()[0])
-
-            # Store the name of the metric so we know which one to call back later
-            self.evaluation_metric = evaluation_metric.shortnames()[0]
 
     def clone(self) -> "ModelTrainer":
-        new_model_trainer = self.__class__(
-            hyperparameters=self.hyperparameters,
-            num_cv_folds=self.num_cv_folds,
-            evaluation_metric=self.evaluation_metric,
-            random_state=self.random_state,
-            metrics=self.metrics,
-            callbacks=self.callbacks,
-            num_hyperopt_samples=self.num_hyperopt_samples,
-        )
+        new_model_trainer = self.__class__(self.config)
         new_model_trainer.model = clone_model(self.model)
         return new_model_trainer
 
@@ -107,9 +67,6 @@ class ModelTrainer(CallbackInvoker):
         """
         raise NotImplementedError
 
-    def evaluate(self) -> PerformanceMetrics:
-        raise NotImplementedError
-
     def set_hyperparameters(self, hyperparameters: HyperParameterTuneSet):
         self.hyperparameters = hyperparameters
 
@@ -127,9 +84,10 @@ class ModelTrainer(CallbackInvoker):
         encode_plots_base64=False,
     ) -> (
         NamedAggregatePerformanceMetrics
-        # trunk-ignore(ruff/F821)
         | Tuple[
-            NamedAggregatePerformanceMetrics, Union[bytes, "matplotlib.figure.Figure"]
+            NamedAggregatePerformanceMetrics,
+            # trunk-ignore(ruff/F821)
+            Union[bytes, "matplotlib.figure.Figure"],
         ]
     ):
         kf = KFold(n_splits=n_splits, random_state=random_state, shuffle=True)
@@ -149,10 +107,10 @@ class ModelTrainer(CallbackInvoker):
             y_train, y_val = y[train_index], y[val_index]
 
             # Create the scalar if we were told to scale certain columns
-            if self.scaling_columns is not None:
+            if self.config.scaling_columns is not None:
                 # logger.info(f"Scaling Columns {self.scaling_columns}")
                 scaler = ColumnTransformer(
-                    [("scalar", StandardScaler(), self.scaling_columns)],
+                    [("scalar", StandardScaler(), self.config.scaling_columns)],
                     remainder="passthrough",
                 )
 
@@ -164,11 +122,11 @@ class ModelTrainer(CallbackInvoker):
             y_train_pred = self.model.predict(X_train)
             y_val_pred = self.model.predict(X_val)
 
-            train_metrics_set = self.metrics.clone()
+            train_metrics_set = self.config.metrics.clone()
             train_metrics_set.evaluate_all(y_train, y_train_pred)
             all_metrics.add_metrics("train", train_metrics_set)
 
-            val_metrics_set = self.metrics.clone()
+            val_metrics_set = self.config.metrics.clone()
             val_metrics_set.evaluate_all(y_val, y_val_pred)
             all_metrics.add_metrics("val", val_metrics_set)
 
@@ -239,12 +197,18 @@ class ModelTrainer(CallbackInvoker):
             # without affecting other tune instances
             trainer = self.clone()
             trainer.set_custom_config(config)
-            print(f"Metric: {trainer.evaluation_metric}")
+            print(f"Metric: {trainer.config.evaluation_metric}")
 
             trainer.trigger_callback("on_tune_step_begin", args={"trainer": trainer})
 
             metrics: NamedAggregatePerformanceMetrics = trainer.cross_validate(
-                X, y, self.num_cv_folds, self.random_state, False, False, False
+                X,
+                y,
+                self.config.num_cv_folds,
+                self.config.random_state,
+                False,
+                False,
+                False,
             )
 
             self.trigger_callback(
@@ -257,14 +221,16 @@ class ModelTrainer(CallbackInvoker):
             )
 
             avg_eval_metric = metrics.get_group_metric_avg(
-                "val", self.evaluation_metric
+                "val", self.config.evaluation_metric
             )
-            avg_eval_std = metrics.get_group_metric_std("val", self.evaluation_metric)
+            avg_eval_std = metrics.get_group_metric_std(
+                "val", self.config.evaluation_metric
+            )
 
             tune.report(
                 **{
-                    self.evaluation_metric: avg_eval_metric,
-                    f"{self.evaluation_metric}_std": avg_eval_std,
+                    self.config.evaluation_metric: avg_eval_metric,
+                    f"{self.config.evaluation_metric}_std": avg_eval_std,
                 }
             )
 
@@ -273,17 +239,27 @@ class ModelTrainer(CallbackInvoker):
         if is_notebook():
             logger.info("Starting Notebook Reporter")
             reporter = tune.JupyterNotebookReporter(
-                metric_columns=["loss", "training_iteration", self.evaluation_metric]
+                metric_columns=[
+                    "loss",
+                    "training_iteration",
+                    self.config.evaluation_metric,
+                ]
             )
         else:
             logger.info("Starting CLI Reporter")
             reporter = tune.CLIReporter(
-                metric_columns=["loss", "training_iteration", self.evaluation_metric]
+                metric_columns=[
+                    "loss",
+                    "training_iteration",
+                    self.config.evaluation_metric,
+                ]
             )
 
         hyperopt_search = HyperOptSearch(
-            metric=self.evaluation_metric,
-            mode=self.metrics.get_metric_obj(self.evaluation_metric).optimal_mode(),
+            metric=self.config.evaluation_metric,
+            mode=self.config.metrics.get_metric_obj(
+                self.config.evaluation_metric
+            ).optimal_mode(),
         )
         hyperopt_search = ConcurrencyLimiter(hyperopt_search, max_concurrent=4)
 
@@ -293,7 +269,7 @@ class ModelTrainer(CallbackInvoker):
         analysis = tune.run(
             objective,
             resources_per_trial={"cpu": 1},
-            config=self.hyperparameters.parameters,
+            config=self.config.hyperparameters.parameters,
             search_alg=hyperopt_search,
             progress_reporter=reporter,
             num_samples=100,
@@ -304,12 +280,16 @@ class ModelTrainer(CallbackInvoker):
         ray.shutdown()
 
         tdata = analysis.get_best_trial(
-            metric=self.evaluation_metric,
-            mode=self.metrics.get_metric_obj(self.evaluation_metric).optimal_mode(),
+            metric=self.config.evaluation_metric,
+            mode=self.config.metrics.get_metric_obj(
+                self.config.evaluation_metric
+            ).optimal_mode(),
         )
         best_params = analysis.get_best_config(
-            metric=self.evaluation_metric,
-            mode=self.metrics.get_metric_obj(self.evaluation_metric).optimal_mode(),
+            metric=self.config.evaluation_metric,
+            mode=self.config.metrics.get_metric_obj(
+                self.config.evaluation_metric
+            ).optimal_mode(),
         )
 
         self.best_params = best_params

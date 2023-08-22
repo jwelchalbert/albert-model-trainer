@@ -3,7 +3,7 @@ from typing import Any
 from albert_model_trainer.base.hyperparameter import HyperParameterTuneSet
 from ray import tune
 from sklearn.linear_model import (
-    Ridge,
+    Lars,
 )
 from albert_model_trainer.base.model import ModelTrainer
 from albert_model_trainer.base.model_config import (
@@ -12,27 +12,26 @@ from albert_model_trainer.base.model_config import (
 )
 
 
-# (
-# "Ridge",
-# Ridge(random_state=self.random_state),
-# {"alpha": tune.loguniform(0.001, 10.0)},
-# ),
-class RidgeRegressionHyperparameterSet(HyperParameterTuneSet):
-    DEFAULT_ALPHA = tune.loguniform(0.001, 10.0)
+class LarsRegressionHyperparameterSet(HyperParameterTuneSet):
+    DEFAULT_N_NONZERO_COEFS = tune.randint(1, 500)
 
     def __init__(self, **kwargs) -> None:
-        self.parameters = {"alpha": kwargs.get("alpha", self.DEFAULT_ALPHA)}
+        self.parameters = {
+            "n_nonzero_coefs": kwargs.get(
+                "n_nonzero_coefs", self.DEFAULT_N_NONZERO_COEFS
+            ),
+        }
 
 
-class RidgeRegressionTrainer(ModelTrainer):
+class LarsRegressionTrainer(ModelTrainer):
     def __init__(self, config: ModelConfigurationBase | None = None):
         if config is None:
-            config = ModelConfigurationBase(RidgeRegressionHyperparameterSet())
+            config = ModelConfigurationBase(LarsRegressionHyperparameterSet())
         else:
-            validate_config_type(config, RidgeRegressionHyperparameterSet)
+            validate_config_type(config, LarsRegressionHyperparameterSet)
 
         super().__init__(config)
-        self.model = Ridge(random_state=config.random_state)
+        self.model = Lars(random_state=config.random_state)
 
     def fit(self, X: Any, y: Any):
         if self.model is not None:
