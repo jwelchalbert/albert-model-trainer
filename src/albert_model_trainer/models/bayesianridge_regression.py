@@ -5,8 +5,10 @@ from sklearn.linear_model import BayesianRidge
 
 from albert_model_trainer.base.hyperparameter import HyperParameterTuneSet
 from albert_model_trainer.base.model import ModelTrainer
-from albert_model_trainer.base.model_config import (ModelConfigurationBase,
-                                                    validate_config_type)
+from albert_model_trainer.base.model_config import (
+    ModelConfigurationBase,
+    validate_config_type,
+)
 
 
 class BayesianRidgeRegressionHyperparameterSet(HyperParameterTuneSet):
@@ -16,7 +18,7 @@ class BayesianRidgeRegressionHyperparameterSet(HyperParameterTuneSet):
     DEFAULT_LAMBDA_2 = tune.loguniform(1e-6, 1e6)
 
     def __init__(self, **kwargs) -> None:
-        self.parameters = {
+        self._parameters = {
             "alpha_1": kwargs.get("alpha_1", self.DEFAULT_ALPHA_1),
             "alpha_2": kwargs.get("alpha_2", self.DEFAULT_ALPHA_2),
             "lambda_1": kwargs.get("lambda_1", self.DEFAULT_LAMBDA_1),

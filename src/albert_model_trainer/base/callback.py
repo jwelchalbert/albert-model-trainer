@@ -3,8 +3,10 @@
 from typing import Dict
 
 from albert_model_trainer.base.metrics import (
-    AggregatePerformanceMetrics, NamedAggregatePerformanceMetrics,
-    PerformanceMetrics)
+    AggregatePerformanceMetrics,
+    NamedAggregatePerformanceMetrics,
+    PerformanceMetrics,
+)
 
 
 class Callback:
@@ -66,6 +68,7 @@ class Callback:
         self,
         trainer: "ModelTrainer",
         output_num: int,
+        total_outputs: int,
     ) -> None:
         """Signals when a multi output hyperparameter tune session has completed."""
 

@@ -5,8 +5,10 @@ from sklearn.tree import DecisionTreeRegressor
 
 from albert_model_trainer.base.hyperparameter import HyperParameterTuneSet
 from albert_model_trainer.base.model import ModelTrainer
-from albert_model_trainer.base.model_config import (ModelConfigurationBase,
-                                                    validate_config_type)
+from albert_model_trainer.base.model_config import (
+    ModelConfigurationBase,
+    validate_config_type,
+)
 
 
 class DecisionTreeRegressorHyperparameterSet(HyperParameterTuneSet):
@@ -23,7 +25,7 @@ class DecisionTreeRegressorHyperparameterSet(HyperParameterTuneSet):
     DEFAULT_CCP_ALPHA = tune.uniform(0.0, 0.2)
 
     def __init__(self, **kwargs) -> None:
-        self.parameters = {
+        self._parameters = {
             "max_depth": kwargs.get("max_depth", self.DEFAULT_MAX_DEPTH),
             "min_samples_split": kwargs.get(
                 "min_samples_split", self.DEFAULT_MIN_SAMPLES_SPLIT

@@ -54,6 +54,7 @@ class SklearnAutoRegressor(BaseEstimator, RegressorMixin, CallbackInvoker):
             for metric_name in fields:
                 self.metrics.add_metric(metric_name)
         elif isinstance(metrics, list):
+            self.metrics = PerformanceMetrics()
             # If the user passed in a list of strings or metric objects then
             # we add them directly -- the PerformanceMetrics object will handle type checks
             if len(metrics) > 0:
@@ -63,9 +64,8 @@ class SklearnAutoRegressor(BaseEstimator, RegressorMixin, CallbackInvoker):
             # If they pass in a prepopulated PM object, then we just use that
             self.metrics = metrics
         else:
-            self.metrics = (
-                PerformanceMetrics()
-            )  # Empty Set of Metrics -- we will add the evaluation metric next so there is atleast one
+            self.metrics = PerformanceMetrics()
+            # Empty Set of Metrics -- we will add the evaluation metric next so there is atleast one
 
         if isinstance(evaluation_metric, str):
             if not self.metrics.has_metric(evaluation_metric):
@@ -117,7 +117,7 @@ class SklearnAutoRegressor(BaseEstimator, RegressorMixin, CallbackInvoker):
         if (len(y.shape) > 1) and (y.shape[-1] > 1):
             self.multi_output = True
 
-        self.best_params = ResultTracker(y.shape[-1])
+        self.result_tracker = ResultTracker(y.shape[-1])
 
         # We will iterate through each model and do a full hyperparameter tune on it
         for idx, (model_name, model_trainer) in enumerate(self.models.items()):
@@ -133,21 +133,24 @@ class SklearnAutoRegressor(BaseEstimator, RegressorMixin, CallbackInvoker):
             # If we have multiple outputs then we need to build one model for each output
             for i in range(y.shape[-1]):
                 tdata, best_params = model_trainer.fit_tune(X, y[:, i])
-                self.best_params.add_result(
+                self.result_tracker.add_result(
                     i, model_name, tdata[self.evaluation_metric], best_params
                 )
                 if self.multi_output:
                     # In multi output cases indicate when we finish one of the outputs
                     self.trigger_callback(
                         "on_tune_multi_output_end",
-                        {"trainer": model_trainer, "output_num": i},
+                        {
+                            "trainer": model_trainer,
+                            "output_num": i,
+                            "total_outputs": y.shape[-1],
+                        },
                     )
 
             self.trigger_callback(
                 "on_tune_end", {"trainer": model_trainer, "model_idx": idx}
             )
 
-            return self.best_params.get_best_params(
-                self.metrics.get_metric_obj(self.evaluation_metric).optimal_mode()
-                == "max"
-            )
+        return self.result_tracker.get_best_params(
+            self.metrics.get_metric_obj(self.evaluation_metric).optimal_mode() == "max"
+        )

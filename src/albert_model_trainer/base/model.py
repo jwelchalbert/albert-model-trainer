@@ -1,6 +1,6 @@
-import logging
 import warnings
 from typing import Any, Dict, Tuple, Union
+from loguru import logger
 
 import numpy as np
 import ray
@@ -20,7 +20,6 @@ from albert_model_trainer.base.metrics import NamedAggregatePerformanceMetrics
 from albert_model_trainer.base.model_config import ModelConfigurationBase
 
 warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
-logger = logging.getLogger("albert.log")
 
 
 def is_notebook() -> bool:
@@ -122,10 +121,12 @@ class ModelTrainer(CallbackInvoker):
             y_train_pred = self.model.predict(X_train)
             y_val_pred = self.model.predict(X_val)
 
+            logger.debug("Building training metrics set")
             train_metrics_set = self.config.metrics.clone()
             train_metrics_set.evaluate_all(y_train, y_train_pred)
             all_metrics.add_metrics("train", train_metrics_set)
 
+            logger.debug("Building val metrics set")
             val_metrics_set = self.config.metrics.clone()
             val_metrics_set.evaluate_all(y_val, y_val_pred)
             all_metrics.add_metrics("val", val_metrics_set)
@@ -192,12 +193,12 @@ class ModelTrainer(CallbackInvoker):
         # Call Setup on the callbacks
         self.trigger_callback("setup", args={"trainer": self})
 
-        def objective(config) -> None:
+        def build_model(config) -> None:
             # Get a clone of the trainer so we can configure the underlying model
             # without affecting other tune instances
             trainer = self.clone()
             trainer.set_custom_config(config)
-            print(f"Metric: {trainer.config.evaluation_metric}")
+            logger.debug(f"Metric: {trainer.config.evaluation_metric}")
 
             trainer.trigger_callback("on_tune_step_begin", args={"trainer": trainer})
 
@@ -226,6 +227,9 @@ class ModelTrainer(CallbackInvoker):
             avg_eval_std = metrics.get_group_metric_std(
                 "val", self.config.evaluation_metric
             )
+
+            logger.debug(f"Avg Metric {self.config.evaluation_metric}:")
+            logger.debug(avg_eval_metric)
 
             tune.report(
                 **{
@@ -261,15 +265,18 @@ class ModelTrainer(CallbackInvoker):
                 self.config.evaluation_metric
             ).optimal_mode(),
         )
-        hyperopt_search = ConcurrencyLimiter(hyperopt_search, max_concurrent=4)
+        # hyperopt_search = ConcurrencyLimiter(hyperopt_search, max_concurrent=8)
 
         self.trigger_callback("on_ray_pre_init", {"trainer": self})
 
-        ray.init(_memory=5000000000, object_store_memory=2000000000, num_cpus=2)
+        # ray.init(_memory=5000000000, object_store_memory=2000000000, num_cpus=8)
+        ray.init()
         analysis = tune.run(
-            objective,
+            build_model,
             resources_per_trial={"cpu": 1},
-            config=self.config.hyperparameters.parameters,
+            config=self.config.hyperparameters.get_valid_parameters(
+                X.shape, y.shape, (np.min(X), np.max(X)), (np.min(y), np.max(y))
+            ),
             search_alg=hyperopt_search,
             progress_reporter=reporter,
             num_samples=100,

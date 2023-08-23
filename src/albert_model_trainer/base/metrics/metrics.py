@@ -1,9 +1,14 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
-from sklearn.metrics import (accuracy_score, confusion_matrix, f1_score,
-                             log_loss, mean_absolute_error, mean_squared_error,
-                             precision_score, r2_score, recall_score,
-                             roc_auc_score)
+from sklearn.metrics import (
+    accuracy_score,
+    mean_absolute_error,
+    mean_squared_error,
+    precision_score,
+    r2_score,
+)
+
+from math import sqrt
 
 METRIC_MODE_MIN = "min"
 METRIC_MODE_MAX = "max"
@@ -59,6 +64,20 @@ class PrecisionMetric(Metric):
         return METRIC_MODE_MAX
 
 
+class RootMeanSquaredErrorMetric(Metric):
+    def evaluate(self, true_values: Any, predictions: Any) -> float:
+        return sqrt(mean_squared_error(true_values, predictions))
+
+    def shortnames(self) -> list[str]:
+        return ["rmse", "root mean squared error"]
+
+    def __str__(self) -> str:
+        return "Root Mean Squared Error"
+
+    def optimal_mode(self) -> str:
+        return METRIC_MODE_MIN
+
+
 class MAEMetric(Metric):
     def evaluate(self, true_values: Any, predictions: Any) -> float:
         return mean_absolute_error(true_values, predictions)
@@ -87,7 +106,7 @@ class MSEMetric(Metric):
         return METRIC_MODE_MIN
 
 
-class R2Metric(Metric):
+class R2ScoreMetric(Metric):
     def evaluate(self, true_values: Any, predictions: Any) -> float:
         return r2_score(true_values, predictions)
 

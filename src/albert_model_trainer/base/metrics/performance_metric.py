@@ -1,11 +1,15 @@
 import inspect
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import numpy as np
 
 import albert_model_trainer.base.metrics.metrics as metrics
 
 from .metrics import Metric
+
+import logging
+
+logger = logging.getLogger("albert.log")
 
 
 def generate_metric_mapping():
@@ -33,8 +37,9 @@ class PerformanceMetrics:
     def __init__(self, metrics_to_eval: List[Metric] | None = None):
         if metrics_to_eval is None:
             metrics_to_eval = []
-
-        self.metrics = metrics_to_eval
+        self.metrics: List[Metric] = []
+        for m in metrics_to_eval:
+            self.add_metric(m)
         self.results = {}
 
     def has_metric(self, metric_name: str) -> bool:
@@ -45,18 +50,21 @@ class PerformanceMetrics:
         return False
 
     def get_metric(self, metric_name: str) -> float:
+        logger.debug(f"Searching for metric {metric_name}")
         for m in self.metrics:
+            logger.debug(f"{m} -- {m.shortnames()}")
             if metric_name.lower() in m.shortnames():
+                logger.debug(f"Found Metric for {metric_name} as {str(m)}")
                 if str(m) in self.results:
                     return self.results[str(m)]
                 else:
                     raise KeyError(
                         f"no metric named {metric_name} has been calculated yet -- be sure you call `evaluate_all` prior to trying to get the metric"
                     )
-            else:
-                raise KeyError(
-                    f"no metric named {metric_name} has been registered as a performance metric"
-                )
+        else:
+            raise KeyError(
+                f"no metric named {metric_name} has been registered as a performance metric"
+            )
 
     def get_metric_obj(self, metric_name: str) -> Metric:
         for m in self.metrics:
@@ -74,6 +82,10 @@ class PerformanceMetrics:
         return new_metrics
 
     def add_metric(self, metric: str | Metric | list[Metric] | list[str], **kwargs):
+        logger.debug(
+            f"adding metric {str(metric) if isinstance(metric, Metric) else metric}"
+        )
+
         def add_by_name(metric):
             if metric in METRIC_MAPPING:
                 self.metrics.append(METRIC_MAPPING[metric](**kwargs))
@@ -99,11 +111,13 @@ class PerformanceMetrics:
 
     def evaluate_all(self, true_values: Any, predictions: Any):
         for metric in self.metrics:
-            self.results[str(metric)] = metric.evaluate(true_values, predictions)
+            val = metric.evaluate(true_values, predictions)
+            logger.debug(f"Computing {str(metric)} -- {val}")
+            self.results[str(metric)] = val
 
     def print_summary(self):
         for metric_name, result in self.results.items():
-            print(f"{metric_name}: {result}")
+            logger.info(f"{metric_name}: {result}")
 
 
 class AggregatePerformanceMetrics:
@@ -111,7 +125,7 @@ class AggregatePerformanceMetrics:
         self.metrics: list[PerformanceMetrics] = []
 
     def add_metrics(self, metrics: PerformanceMetrics):
-        self.metrics.append(metrics)
+        self.metrics.append(metrics.clone())
 
     def get_metric_vals(self, metric_name: str):
         vals = []
@@ -119,9 +133,9 @@ class AggregatePerformanceMetrics:
             try:
                 val = pm.get_metric(metric_name)
                 vals.append(val)
-            except KeyError:
+            except KeyError as e:
+                logger.error(f"Unknown key requested {(str(e))}")
                 continue
-
         return vals
 
     def get_metric_avg(self, metric_name: str) -> float:

@@ -5,8 +5,10 @@ from sklearn.ensemble import GradientBoostingRegressor
 
 from albert_model_trainer.base.hyperparameter import HyperParameterTuneSet
 from albert_model_trainer.base.model import ModelTrainer
-from albert_model_trainer.base.model_config import (ModelConfigurationBase,
-                                                    validate_config_type)
+from albert_model_trainer.base.model_config import (
+    ModelConfigurationBase,
+    validate_config_type,
+)
 
 
 class GradientBoostingRegressorHyperparameterSet(HyperParameterTuneSet):
@@ -19,7 +21,7 @@ class GradientBoostingRegressorHyperparameterSet(HyperParameterTuneSet):
     DEFAULT_MAX_FEATURES = tune.choice([1.0, "sqrt", "log2"])
 
     def __init__(self, **kwargs) -> None:
-        self.parameters = {
+        self._parameters = {
             "n_estimators": kwargs.get("n_estimators", self.DEFAULT_N_ESTIMATORS),
             "learning_rate": kwargs.get("learning_rate", self.DEFAULT_LEARNING_RATE),
             "max_depth": kwargs.get("max_depth", self.DEFAULT_MAX_DEPTH),

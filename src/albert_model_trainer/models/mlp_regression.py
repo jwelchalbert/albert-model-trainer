@@ -5,8 +5,10 @@ from sklearn.neural_network import MLPRegressor
 
 from albert_model_trainer.base.hyperparameter import HyperParameterTuneSet
 from albert_model_trainer.base.model import ModelTrainer
-from albert_model_trainer.base.model_config import (ModelConfigurationBase,
-                                                    validate_config_type)
+from albert_model_trainer.base.model_config import (
+    ModelConfigurationBase,
+    validate_config_type,
+)
 
 
 class MLPRegressorHyperparameterSet(HyperParameterTuneSet):
@@ -26,7 +28,7 @@ class MLPRegressorHyperparameterSet(HyperParameterTuneSet):
     DEFAULT_MAX_FUN = tune.randint(10000, 50000)
 
     def __init__(self, **kwargs) -> None:
-        self.parameters = {
+        self._parameters = {
             "hidden_layer_sizes": kwargs.get(
                 "hidden_layer_sizes", self.DEFAULT_HIDDEN_LAYER_SIZES
             ),

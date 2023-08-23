@@ -5,8 +5,10 @@ from sklearn.linear_model import RANSACRegressor
 
 from albert_model_trainer.base.hyperparameter import HyperParameterTuneSet
 from albert_model_trainer.base.model import ModelTrainer
-from albert_model_trainer.base.model_config import (ModelConfigurationBase,
-                                                    validate_config_type)
+from albert_model_trainer.base.model_config import (
+    ModelConfigurationBase,
+    validate_config_type,
+)
 
 
 class RANSACRegressorHyperparameterSet(HyperParameterTuneSet):
@@ -15,7 +17,7 @@ class RANSACRegressorHyperparameterSet(HyperParameterTuneSet):
     DEFAULT_MAX_TRIALS = tune.randint(50, 500)
 
     def __init__(self, **kwargs) -> None:
-        self.parameters = {
+        self._parameters = {
             "min_samples": kwargs.get("min_samples", self.DEFAULT_MIN_SAMPLES),
             "residual_threshold": kwargs.get(
                 "residual_threshold", self.DEFAULT_RESIDUAL_THRESHOLD

@@ -5,8 +5,10 @@ from sklearn.linear_model import Ridge
 
 from albert_model_trainer.base.hyperparameter import HyperParameterTuneSet
 from albert_model_trainer.base.model import ModelTrainer
-from albert_model_trainer.base.model_config import (ModelConfigurationBase,
-                                                    validate_config_type)
+from albert_model_trainer.base.model_config import (
+    ModelConfigurationBase,
+    validate_config_type,
+)
 
 
 # (
@@ -18,7 +20,7 @@ class RidgeRegressionHyperparameterSet(HyperParameterTuneSet):
     DEFAULT_ALPHA = tune.loguniform(0.001, 10.0)
 
     def __init__(self, **kwargs) -> None:
-        self.parameters = {"alpha": kwargs.get("alpha", self.DEFAULT_ALPHA)}
+        self._parameters = {"alpha": kwargs.get("alpha", self.DEFAULT_ALPHA)}
 
 
 class RidgeRegressionTrainer(ModelTrainer):

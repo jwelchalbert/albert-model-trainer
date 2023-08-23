@@ -5,8 +5,10 @@ from sklearn.svm import SVR
 
 from albert_model_trainer.base.hyperparameter import HyperParameterTuneSet
 from albert_model_trainer.base.model import ModelTrainer
-from albert_model_trainer.base.model_config import (ModelConfigurationBase,
-                                                    validate_config_type)
+from albert_model_trainer.base.model_config import (
+    ModelConfigurationBase,
+    validate_config_type,
+)
 
 
 class SVRHyperparameterSet(HyperParameterTuneSet):
@@ -20,7 +22,7 @@ class SVRHyperparameterSet(HyperParameterTuneSet):
     DEFAULT_TOL = tune.loguniform(1e-5, 1e-3)
 
     def __init__(self, **kwargs) -> None:
-        self.parameters = {
+        self._parameters = {
             "C": kwargs.get("C", self.DEFAULT_C),
             "epsilon": kwargs.get("epsilon", self.DEFAULT_EPSILON),
             "gamma": kwargs.get("gamma", self.DEFAULT_GAMMA),

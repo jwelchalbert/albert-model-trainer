@@ -5,8 +5,10 @@ from sklearn.linear_model import SGDRegressor
 
 from albert_model_trainer.base.hyperparameter import HyperParameterTuneSet
 from albert_model_trainer.base.model import ModelTrainer
-from albert_model_trainer.base.model_config import (ModelConfigurationBase,
-                                                    validate_config_type)
+from albert_model_trainer.base.model_config import (
+    ModelConfigurationBase,
+    validate_config_type,
+)
 
 
 class SGDRegressorHyperparameterSet(HyperParameterTuneSet):
@@ -15,7 +17,7 @@ class SGDRegressorHyperparameterSet(HyperParameterTuneSet):
     DEFAULT_L1_RATIO = tune.uniform(0.0, 1.0)
 
     def __init__(self, **kwargs) -> None:
-        self.parameters = {
+        self._parameters = {
             "penalty": kwargs.get("penalty", self.DEFAULT_PENALTY),
             "alpha": kwargs.get("alpha", self.DEFAULT_ALPHA),
             "l1_ratio": kwargs.get("l1_ratio", self.DEFAULT_L1_RATIO),

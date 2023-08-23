@@ -5,8 +5,10 @@ from sklearn.neighbors import KNeighborsRegressor
 
 from albert_model_trainer.base.hyperparameter import HyperParameterTuneSet
 from albert_model_trainer.base.model import ModelTrainer
-from albert_model_trainer.base.model_config import (ModelConfigurationBase,
-                                                    validate_config_type)
+from albert_model_trainer.base.model_config import (
+    ModelConfigurationBase,
+    validate_config_type,
+)
 
 
 class KNeighborsRegressorHyperparameterSet(HyperParameterTuneSet):
@@ -18,7 +20,7 @@ class KNeighborsRegressorHyperparameterSet(HyperParameterTuneSet):
     DEFAULT_METRIC = tune.choice(["euclidean", "manhattan", "chebyshev", "minkowski"])
 
     def __init__(self, **kwargs) -> None:
-        self.parameters = {
+        self._parameters = {
             "n_neighbors": kwargs.get("n_neighbors", self.DEFAULT_N_NEIGHBORS),
             "weights": kwargs.get("weights", self.DEFAULT_WEIGHTS),
             "p": kwargs.get("p", self.DEFAULT_P),
