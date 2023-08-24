@@ -67,7 +67,7 @@ class DecisionTreeRegressorHyperparameterSet(HyperParameterTuneSet):
         return valid_params
 
 
-class DecisionTreeRegressorTrainer(ModelTrainer):
+class DecisionTreeRegressionTrainer(ModelTrainer):
     def __init__(self, config: ModelConfigurationBase | None = None):
         if config is None:
             config = ModelConfigurationBase(DecisionTreeRegressorHyperparameterSet())

@@ -18,6 +18,7 @@ loguru = "^0.7.0"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.25.1"
+ipython = "^8.14.0"
 
 [build-system]
 requires = ["poetry-core"]

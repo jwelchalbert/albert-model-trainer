@@ -72,6 +72,11 @@ class ModelTrainer(CallbackInvoker):
     def name(self):
         return self.__class__.__name__
 
+    def modelName(self):
+        if self.model is not None:
+            return self.model.__class__.__name__
+        return "None"
+
     def cross_validate(
         self,
         X: Any,
@@ -107,7 +112,7 @@ class ModelTrainer(CallbackInvoker):
 
             # Create the scalar if we were told to scale certain columns
             if self.config.scaling_columns is not None:
-                # logger.info(f"Scaling Columns {self.scaling_columns}")
+                logger.info(f"Scaling Columns {self.scaling_columns}")
                 scaler = ColumnTransformer(
                     [("scalar", StandardScaler(), self.config.scaling_columns)],
                     remainder="passthrough",
@@ -224,19 +229,29 @@ class ModelTrainer(CallbackInvoker):
             avg_eval_metric = metrics.get_group_metric_avg(
                 "val", self.config.evaluation_metric
             )
-            avg_eval_std = metrics.get_group_metric_std(
-                "val", self.config.evaluation_metric
-            )
 
             logger.debug(f"Avg Metric {self.config.evaluation_metric}:")
             logger.debug(avg_eval_metric)
 
-            tune.report(
-                **{
-                    self.config.evaluation_metric: avg_eval_metric,
-                    f"{self.config.evaluation_metric}_std": avg_eval_std,
-                }
-            )
+            results = {}
+            for metric_name in metrics.get_available_metrics():
+                results[metric_name] = metrics.get_group_metric_avg("val", metric_name)
+                results[f"{metric_name}_std"] = metrics.get_group_metric_std(
+                    "val", metric_name
+                )
+
+            # If the user used a non standard shortname -- just add the result here
+            # there is probably a more efficient method to do this but would require
+            # more infrastructure
+            if self.config.evaluation_metric not in results:
+                results[self.config.evaluation_metric] = metrics.get_group_metric_avg(
+                    "val", self.config.evaluation_metric
+                )
+                results[
+                    f"{self.config.evaluation_metric}_std"
+                ] = metrics.get_group_metric_std("val", self.config.evaluation_metric)
+
+            tune.report(**results)
 
             self.trigger_callback("on_tune_step_complete", {"trainer": trainer})
 
@@ -265,11 +280,11 @@ class ModelTrainer(CallbackInvoker):
                 self.config.evaluation_metric
             ).optimal_mode(),
         )
-        # hyperopt_search = ConcurrencyLimiter(hyperopt_search, max_concurrent=8)
+        # hyperopt_search = ConcurrencyLimiter(hyperopt_search, max_concurrent=4)
 
         self.trigger_callback("on_ray_pre_init", {"trainer": self})
 
-        # ray.init(_memory=5000000000, object_store_memory=2000000000, num_cpus=8)
+        # ray.init(_memory=5000000000, object_store_memory=2000000000, num_cpus=2)
         ray.init()
         analysis = tune.run(
             build_model,
@@ -279,7 +294,7 @@ class ModelTrainer(CallbackInvoker):
             ),
             search_alg=hyperopt_search,
             progress_reporter=reporter,
-            num_samples=100,
+            num_samples=self.config.num_hyperopt_samples,
             raise_on_failed_trial=False,
         )
 

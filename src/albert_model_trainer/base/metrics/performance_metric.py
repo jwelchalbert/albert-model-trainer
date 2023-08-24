@@ -144,6 +144,14 @@ class AggregatePerformanceMetrics:
     def get_metric_std(self, metric_name: str) -> float:
         return np.std(self.get_metric_vals(metric_name))
 
+    def get_available_metrics(self):
+        metrics = []
+        if self.metrics is not None:
+            for pm in self.metrics:
+                for m in pm.metrics:
+                    metrics.append(m.shortnames()[0])
+        return metrics
+
 
 class NamedAggregatePerformanceMetrics:
     def __init__(self) -> None:
@@ -168,3 +176,11 @@ class NamedAggregatePerformanceMetrics:
 
     def get_metric_group(self, group: str) -> AggregatePerformanceMetrics:
         return self.metrics.get(group)
+
+    def get_available_metrics(self) -> list[str]:
+        a_metrics = []
+        if self.metrics is not None:
+            for m in self.metrics:
+                a_metrics.extend(self.metrics[m].get_available_metrics())
+
+        return a_metrics

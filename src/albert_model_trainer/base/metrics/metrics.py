@@ -83,7 +83,7 @@ class MAEMetric(Metric):
         return mean_absolute_error(true_values, predictions)
 
     def shortnames(self) -> list[str]:
-        return ["mean absolute error", "mae"]
+        return ["mae", "mean absolute error"]
 
     def __str__(self) -> str:
         return "Mean Absolute Error"

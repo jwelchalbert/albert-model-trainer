@@ -7,7 +7,7 @@ from albert_model_trainer.base.model import ModelTrainer
 model_file_dir = os.path.dirname(__file__)
 
 
-def get_model_trainers(directory, instantiate_all=True):
+def get_model_trainers(directory, instantiate_all=True) -> list[ModelTrainer]:
     model_trainers = []
 
     # Iterate through every python file in the directory
@@ -40,3 +40,7 @@ def get_model_trainers(directory, instantiate_all=True):
         model_trainers = [x() for x in model_trainers]
 
     return model_trainers
+
+
+def get_all_model_trainers():
+    return get_model_trainers(model_file_dir)
