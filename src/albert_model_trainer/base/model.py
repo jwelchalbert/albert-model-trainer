@@ -20,7 +20,8 @@ from albert_model_trainer.base.metrics import NamedAggregatePerformanceMetrics
 from albert_model_trainer.base.model_config import ModelConfigurationBase
 
 warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
-logger = logging.getLogger('albert.log')
+logger = logging.getLogger("albert.log")
+
 
 def is_notebook() -> bool:
     try:
@@ -65,7 +66,7 @@ class ModelTrainer(CallbackInvoker):
         Fit the actual model -- optional config dictionary to set parameters on the model.
         """
         if self.model is not None:
-            self.model.fit(X,y)
+            self.model.fit(X, y)
 
     def set_hyperparameters(self, hyperparameters: HyperParameterTuneSet):
         self.hyperparameters = hyperparameters
@@ -151,41 +152,49 @@ class ModelTrainer(CallbackInvoker):
 
             import matplotlib.pyplot as plt
 
-            # Generate a prediction vs observation plot for all folds
-            fig = plt.figure(figsize=(10, 10))
-            for i, (x, y) in enumerate(plotdata):
-                plt.scatter(x, y, alpha=0.2, label=f"Fold {i}")
+            fig_data = []
+            num_outputs = plotdata[0][0].shape[-1] if len(plotdata[0][0].shape) > 1 else 1
 
-            # Get the current axes, so we can add a line to it
-            ax = plt.gca()
+            for j in range(num_outputs):
+                # Generate a prediction vs observation plot for all folds
+                fig = plt.figure(figsize=(10, 10))
+                for i, (xdata, ydata) in enumerate(plotdata):
+                    x = xdata[:,j] if num_outputs > 1 else xdata
+                    y = ydata[:,j] if num_outputs > 1 else ydata
+                    plt.scatter(x, y, alpha=0.2, label=f"Fold {i}")
 
-            # Get the limits of the current axes
-            xlim = ax.get_xlim()
-            ylim = ax.get_ylim()
+                # Get the current axes, so we can add a line to it
+                ax = plt.gca()
 
-            # Find the range of both axes
-            range_all = [np.min([xlim, ylim]), np.max([xlim, ylim])]
+                # Get the limits of the current axes
+                xlim = ax.get_xlim()
+                ylim = ax.get_ylim()
 
-            # Plot the diagonal line
-            plt.plot(range_all, range_all, "k--")
+                # Find the range of both axes
+                range_all = [np.min([xlim, ylim]), np.max([xlim, ylim])]
 
-            plt.ylabel("Predicted Values")
-            plt.xlabel("Observed Values")
-            plt.title("Prediction vs Observation Plot")
-            plt.legend()
+                # Plot the diagonal line
+                plt.plot(range_all, range_all, "k--")
 
-            if encode_plots_base64:
-                buf = io.BytesIO()
-                plt.savefig(buf, format="png")
-                buf.seek(0)
+                plt.ylabel("Predicted Values")
+                plt.xlabel("Observed Values")
+                plt.title("Prediction vs Observation Plot")
+                plt.legend()
 
-                image_64 = base64.b64encode(buf.read())
-                figdata = image_64
+                if encode_plots_base64:
+                    buf = io.BytesIO()
+                    plt.savefig(buf, format="png")
+                    buf.seek(0)
 
-            else:
-                figdata = fig
+                    image_64 = base64.b64encode(buf.read())
+                    figdata = image_64
 
-            return all_metrics, figdata
+                else:
+                    figdata = fig
+                
+                fig_data.append(figdata)
+
+            return all_metrics, fig_data
 
         return all_metrics
 
@@ -200,61 +209,73 @@ class ModelTrainer(CallbackInvoker):
         self.trigger_callback("setup", args={"trainer": self})
 
         def build_model(config) -> None:
-            # Get a clone of the trainer so we can configure the underlying model
-            # without affecting other tune instances
-            trainer = self.clone()
-            trainer.set_custom_config(config)
-            logger.debug(f"Metric: {trainer.config.evaluation_metric}")
+            try:
+                # Get a clone of the trainer so we can configure the underlying model
+                # without affecting other tune instances
+                trainer = self.clone()
+                trainer.set_custom_config(config)
+                logger.debug(f"Metric: {trainer.config.evaluation_metric}")
 
-            trainer.trigger_callback("on_tune_step_begin", args={"trainer": trainer})
-
-            metrics: NamedAggregatePerformanceMetrics = trainer.cross_validate(
-                X,
-                y,
-                self.config.num_cv_folds,
-                self.config.random_state,
-                False,
-                False,
-                False,
-            )
-
-            self.trigger_callback(
-                "on_tune_train_end",
-                {"trainer": trainer, "metrics": metrics.get_metric_group("train")},
-            )
-            self.trigger_callback(
-                "on_tune_validation_end",
-                {"trainer": trainer, "metrics": metrics.get_metric_group("val")},
-            )
-
-            avg_eval_metric = metrics.get_group_metric_avg(
-                "val", self.config.evaluation_metric
-            )
-
-            logger.debug(f"Avg Metric {self.config.evaluation_metric}:")
-            logger.debug(avg_eval_metric)
-
-            results = {}
-            for metric_name in metrics.get_available_metrics():
-                results[metric_name] = metrics.get_group_metric_avg("val", metric_name)
-                results[f"{metric_name}_std"] = metrics.get_group_metric_std(
-                    "val", metric_name
+                trainer.trigger_callback(
+                    "on_tune_step_begin", args={"trainer": trainer}
                 )
 
-            # If the user used a non standard shortname -- just add the result here
-            # there is probably a more efficient method to do this but would require
-            # more infrastructure
-            if self.config.evaluation_metric not in results:
-                results[self.config.evaluation_metric] = metrics.get_group_metric_avg(
+                metrics: NamedAggregatePerformanceMetrics = trainer.cross_validate(
+                    X,
+                    y,
+                    self.config.num_cv_folds,
+                    self.config.random_state,
+                    False,
+                    False,
+                    False,
+                )
+
+                self.trigger_callback(
+                    "on_tune_train_end",
+                    {"trainer": trainer, "metrics": metrics.get_metric_group("train")},
+                )
+                self.trigger_callback(
+                    "on_tune_validation_end",
+                    {"trainer": trainer, "metrics": metrics.get_metric_group("val")},
+                )
+
+                avg_eval_metric = metrics.get_group_metric_avg(
                     "val", self.config.evaluation_metric
                 )
-                results[
-                    f"{self.config.evaluation_metric}_std"
-                ] = metrics.get_group_metric_std("val", self.config.evaluation_metric)
 
-            tune.report(**results)
+                logger.debug(f"Avg Metric {self.config.evaluation_metric}:")
+                logger.debug(avg_eval_metric)
 
-            self.trigger_callback("on_tune_step_complete", {"trainer": trainer})
+                results = {}
+                for metric_name in metrics.get_available_metrics():
+                    results[metric_name] = metrics.get_group_metric_avg(
+                        "val", metric_name
+                    )
+                    results[f"{metric_name}_std"] = metrics.get_group_metric_std(
+                        "val", metric_name
+                    )
+
+                # If the user used a non standard shortname -- just add the result here
+                # there is probably a more efficient method to do this but would require
+                # more infrastructure
+                if self.config.evaluation_metric not in results:
+                    results[
+                        self.config.evaluation_metric
+                    ] = metrics.get_group_metric_avg(
+                        "val", self.config.evaluation_metric
+                    )
+                    results[
+                        f"{self.config.evaluation_metric}_std"
+                    ] = metrics.get_group_metric_std(
+                        "val", self.config.evaluation_metric
+                    )
+
+                tune.report(**results)
+            except Exception as e:
+                self.trigger_callback("on_tune_step_complete", {"trainer": trainer})
+                raise e
+            else:
+                self.trigger_callback("on_tune_step_complete", {"trainer": trainer})
 
         if is_notebook():
             logger.info("Starting Notebook Reporter")
