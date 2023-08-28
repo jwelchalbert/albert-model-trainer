@@ -153,14 +153,16 @@ class ModelTrainer(CallbackInvoker):
             import matplotlib.pyplot as plt
 
             fig_data = []
-            num_outputs = plotdata[0][0].shape[-1] if len(plotdata[0][0].shape) > 1 else 1
+            num_outputs = (
+                plotdata[0][0].shape[-1] if len(plotdata[0][0].shape) > 1 else 1
+            )
 
             for j in range(num_outputs):
                 # Generate a prediction vs observation plot for all folds
                 fig = plt.figure(figsize=(10, 10))
                 for i, (xdata, ydata) in enumerate(plotdata):
-                    x = xdata[:,j] if num_outputs > 1 else xdata
-                    y = ydata[:,j] if num_outputs > 1 else ydata
+                    x = xdata[:, j] if num_outputs > 1 else xdata
+                    y = ydata[:, j] if num_outputs > 1 else ydata
                     plt.scatter(x, y, alpha=0.2, label=f"Fold {i}")
 
                 # Get the current axes, so we can add a line to it
@@ -191,7 +193,7 @@ class ModelTrainer(CallbackInvoker):
 
                 else:
                     figdata = fig
-                
+
                 fig_data.append(figdata)
 
             return all_metrics, fig_data
