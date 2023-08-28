@@ -34,7 +34,7 @@ METRIC_MAPPING = generate_metric_mapping()
 
 
 class PerformanceMetrics:
-    def __init__(self, metrics_to_eval: List[Metric] | None = None):
+    def __init__(self, metrics_to_eval: List[Metric] | List[str] | None = None):
         if metrics_to_eval is None:
             metrics_to_eval = []
         self.metrics: List[Metric] = []

@@ -9,8 +9,9 @@ from albert_model_trainer.base.model_config import (
     ModelConfigurationBase,
     validate_config_type,
 )
-from loguru import logger
 
+import logging
+logger = logging.getLogger('albert.log')
 
 class RandomForestRegressorHyperparameterSet(HyperParameterTuneSet):
     DEFAULT_N_ESTIMATORS = tune.randint(50, 500)

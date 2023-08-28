@@ -10,7 +10,8 @@ from albert_model_trainer.base.model_config import (
     validate_config_type,
 )
 
-from loguru import logger
+import logging
+logger = logging.getLogger('albert.log')
 
 
 class DecisionTreeRegressorHyperparameterSet(HyperParameterTuneSet):

@@ -1,6 +1,6 @@
 import warnings
 from typing import Any, Dict, Tuple, Union
-from loguru import logger
+import logging
 
 import numpy as np
 import ray
@@ -20,7 +20,7 @@ from albert_model_trainer.base.metrics import NamedAggregatePerformanceMetrics
 from albert_model_trainer.base.model_config import ModelConfigurationBase
 
 warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
-
+logger = logging.getLogger('albert.log')
 
 def is_notebook() -> bool:
     try:
@@ -60,11 +60,12 @@ class ModelTrainer(CallbackInvoker):
         for param, val in config.items():
             setattr(self.model, param, val)
 
-    def fit(self, X: Any, y: Any | None = None, config: Dict[str, Any] | None = None):
+    def fit(self, X: Any, y: Any | None = None):
         """
         Fit the actual model -- optional config dictionary to set parameters on the model.
         """
-        raise NotImplementedError
+        if self.model is not None:
+            self.model.fit(X,y)
 
     def set_hyperparameters(self, hyperparameters: HyperParameterTuneSet):
         self.hyperparameters = hyperparameters
@@ -112,7 +113,7 @@ class ModelTrainer(CallbackInvoker):
 
             # Create the scalar if we were told to scale certain columns
             if self.config.scaling_columns is not None:
-                logger.info(f"Scaling Columns {self.scaling_columns}")
+                logger.info(f"Scaling Columns {self.config.scaling_columns}")
                 scaler = ColumnTransformer(
                     [("scalar", StandardScaler(), self.config.scaling_columns)],
                     remainder="passthrough",

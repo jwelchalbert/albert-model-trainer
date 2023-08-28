@@ -72,6 +72,13 @@ class Callback:
     ) -> None:
         """Signals when a multi output hyperparameter tune session has completed."""
 
+    def on_tune_multi_output_start(
+        self,
+        trainer: "ModelTrainer",
+        total_outputs: int,
+    ) -> None:
+        """Signals when a muti output hyperparameter tune session is about to begin."""
+
     def on_tune_end(self, trainer: "ModelTrainer", model_idx: int) -> None:
         """Signals when tune stops/completes on a given model."""
 

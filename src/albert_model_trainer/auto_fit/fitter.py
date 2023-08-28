@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, Tuple, List
 
 from sklearn.base import BaseEstimator, RegressorMixin
 
@@ -9,6 +9,7 @@ from albert_model_trainer.models.model_iterator import get_all_model_trainers
 from sklearn.base import clone as clone_model
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+import numpy as np
 
 
 class MultiModelRegressor(BaseEstimator, RegressorMixin):
@@ -18,21 +19,23 @@ class MultiModelRegressor(BaseEstimator, RegressorMixin):
             self.models.append(clone_model(m))
 
     def fit(self, X: Any, y: Any | None = None):
-        for m in self.models:
-            m.fit(X, y)
+        for i, m in enumerate(self.models):
+            m.fit(X, y[:, i])
         return self
 
     def predict(self, X: Any):
         results = []
         for m in self.models:
             results.append(m.predict(X))
-        return results
+        return np.column_stack(results)
 
 
 class ModelRegistry:
     def __init__(self, num_outputs, sort_max_first) -> None:
         self.num_outputs = num_outputs
-        self.params = {i: [] for i in range(num_outputs)}
+        self.params: Dict[
+            int, List[Tuple[str, float, Dict[str, float], Dict[str, Any]]]
+        ] = {i: [] for i in range(num_outputs)}
         self.sort_max_first = sort_max_first
 
     def add_result(
@@ -137,7 +140,7 @@ class ModelRegistry:
 
         return pipeline
 
-    def get_nth_top_model_pipeline(self, nth_model=0):
+    def get_nth_top_model_pipeline(self, nth_model=0, return_meta_data=False):
         if nth_model >= len(self.params[0]):
             raise ValueError(
                 f"n was too large, we only have {len(self.params[0])} models so n must be less than that"
@@ -146,15 +149,22 @@ class ModelRegistry:
         model_info = self.get_sorted_model_info(self.sort_max_first)
         param_set = model_info[nth_model]
 
-        model_names, _, _, model_params = zip(*param_set)
+        model_names, model_scores, model_metrics, model_params = zip(*param_set)
 
         if len(param_set) > 1:
-            return self.get_model_pipeline(model_names, model_params)
+            pipeline = self.get_model_pipeline(model_names, model_params)
         else:
-            return self.get_model_pipeline(model_names[0], model_params[0])
+            pipeline = self.get_model_pipeline(model_names[0], model_params[0])
+
+        if return_meta_data:
+            return pipeline, model_names, model_scores, model_metrics
+        else:
+            return pipeline
 
 
 class SklearnAutoRegressor(BaseEstimator, RegressorMixin, CallbackInvoker):
+    result_tracker: ModelRegistry
+
     def __init__(
         self,
         evaluation_metric: str | Metric = "r2",
@@ -267,7 +277,7 @@ class SklearnAutoRegressor(BaseEstimator, RegressorMixin, CallbackInvoker):
         )
 
         # We will iterate through each model and do a full hyperparameter tune on it
-        for idx, (model_name, model_trainer) in enumerate(self.models.items()):
+        for idx, (_, model_trainer) in enumerate(self.models.items()):
             self.trigger_callback(
                 "on_tune_start",
                 {
@@ -279,10 +289,21 @@ class SklearnAutoRegressor(BaseEstimator, RegressorMixin, CallbackInvoker):
 
             # If we have multiple outputs then we need to build one model for each output
             if self.multi_output:
+                self.trigger_callback(
+                    "on_tune_multi_output_start",
+                    {
+                        "trainer":model_trainer,
+                        "total_outputs":y.shape[-1]
+                    }
+                )
                 for i in range(y.shape[-1]):
                     tdata, best_params = model_trainer.fit_tune(X, y[:, i])
                     self.result_tracker.add_result(
-                        i, model_name, tdata[self.evaluation_metric], tdata, best_params
+                        i,
+                        model_trainer.modelName(),
+                        tdata[self.evaluation_metric],
+                        tdata,
+                        best_params,
                     )
 
                     # In multi output cases indicate when we finish one of the outputs
@@ -297,7 +318,11 @@ class SklearnAutoRegressor(BaseEstimator, RegressorMixin, CallbackInvoker):
             else:
                 tdata, best_params = model_trainer.fit_tune(X, y)
                 self.result_tracker.add_result(
-                    0, model_name, tdata[self.evaluation_metric], tdata, best_params
+                    0,
+                    model_trainer.modelName(),
+                    tdata[self.evaluation_metric],
+                    tdata,
+                    best_params,
                 )
 
             self.trigger_callback(
