@@ -93,7 +93,7 @@ class CallbackInvoker:
     def __init__(self, callbacks: list[Callback]) -> None:
         self.callbacks = callbacks
 
-    def trigger_callback(self, method: str, args: Dict = None):
+    def trigger_callback(self, method: str, args: Dict|None = None):
         if args is None:
             args = {}
 
