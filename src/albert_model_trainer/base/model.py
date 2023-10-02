@@ -159,11 +159,11 @@ class ModelTrainer(CallbackInvoker):
 
             for j in range(num_outputs):
                 # Generate a prediction vs observation plot for all folds
-                fig = plt.figure(figsize=(10, 10))
+                fig = plt.figure(figsize=(6,6))
                 for i, (xdata, ydata) in enumerate(plotdata):
                     x = xdata[:, j] if num_outputs > 1 else xdata
                     y = ydata[:, j] if num_outputs > 1 else ydata
-                    plt.scatter(x, y, alpha=0.2, label=f"Fold {i}")
+                    plt.scatter(x, y, alpha=0.5, label=f"Fold {i}")
 
                 # Get the current axes, so we can add a line to it
                 ax = plt.gca()
@@ -178,9 +178,11 @@ class ModelTrainer(CallbackInvoker):
                 # Plot the diagonal line
                 plt.plot(range_all, range_all, "k--")
 
-                plt.ylabel("Predicted Values")
-                plt.xlabel("Observed Values")
-                plt.title("Prediction vs Observation Plot")
+                plt.xticks(fontsize=11)
+                plt.yticks(fontsize=11)
+                plt.ylabel("Predicted Values", fontsize=12)
+                plt.xlabel("Observed Values", fontsize=12)
+                plt.title("Prediction vs Observation Plot", fontsize=15)
                 plt.legend()
 
                 if encode_plots_base64:
