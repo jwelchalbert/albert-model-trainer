@@ -5,6 +5,7 @@ import logging
 import numpy as np
 import ray
 from ray import tune
+from ray import train
 from ray.tune.search import ConcurrencyLimiter
 from ray.tune.search.hyperopt import HyperOptSearch
 from sklearn.base import BaseEstimator
@@ -159,7 +160,7 @@ class ModelTrainer(CallbackInvoker):
 
             for j in range(num_outputs):
                 # Generate a prediction vs observation plot for all folds
-                fig = plt.figure(figsize=(6,6))
+                fig = plt.figure(figsize=(6, 6))
                 for i, (xdata, ydata) in enumerate(plotdata):
                     x = xdata[:, j] if num_outputs > 1 else xdata
                     y = ydata[:, j] if num_outputs > 1 else ydata
@@ -274,7 +275,7 @@ class ModelTrainer(CallbackInvoker):
                         "val", self.config.evaluation_metric
                     )
 
-                tune.report(**results)
+                train.report(results)
             except Exception as e:
                 self.trigger_callback("on_tune_step_complete", {"trainer": trainer})
                 raise e
