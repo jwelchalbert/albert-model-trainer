@@ -13,17 +13,17 @@ import numpy as np
 
 
 class MultiModelRegressor(BaseEstimator, RegressorMixin):
-    def __init__(self, models: Iterable[RegressorMixin]):
+    def __init__(self, models: Iterable[RegressorMixin]) -> None:
         self.models: list[RegressorMixin] = []
         for m in models:
             self.models.append(clone_model(m))
 
-    def fit(self, X: Any, y: Any | None = None):
+    def fit(self, X: Any, y: Any | None = None) -> "MultiModelRegressor":
         for i, m in enumerate(self.models):
             m.fit(X, y[:, i])
         return self
 
-    def predict(self, X: Any):
+    def predict(self, X: Any) -> Any:
         results = []
         for m in self.models:
             results.append(m.predict(X))
@@ -45,14 +45,14 @@ class ModelRegistry:
         score: float,
         metrics: dict,
         parameters: dict[str, Any],
-    ):
+    ) -> None:
         if output_idx > self.num_outputs:
             raise ValueError(
                 f"requested output idx is greater than the expected number of outputs -- got [{output_idx}] -- exp [{self.num_outputs-1}] max"
             )
         self.params[output_idx].append((name, score, metrics, parameters))
 
-    def get_best_params(self, return_max: bool):
+    def get_best_params(self, return_max: bool) -> list[Any]:
         best_all = []
         for i in range(self.num_outputs):
             best_params = self.params[i]
@@ -60,7 +60,7 @@ class ModelRegistry:
             best_all.append(best_params[0])
         return best_all
 
-    def get_sorted_model_info(self, max: bool):
+    def get_sorted_model_info(self, max: bool) -> list[Any]:
         bsets = []
         for i in range(self.num_outputs):
             best_params = self.params[i]
@@ -70,7 +70,7 @@ class ModelRegistry:
         bsets = list(zip(*bsets))
         return bsets
 
-    def get_model_trainer(self, model_name: str):
+    def get_model_trainer(self, model_name: str) -> ModelTrainer:
         all_models = get_all_model_trainers()
 
         # See if we can find the requested model
@@ -140,7 +140,9 @@ class ModelRegistry:
 
         return pipeline
 
-    def get_nth_top_model_pipeline(self, nth_model=0, return_meta_data=False):
+    def get_nth_top_model_pipeline(
+        self, nth_model=0, return_meta_data=False
+    ) -> tuple[Pipeline, Any, Any, Any] | Pipeline:
         if nth_model >= len(self.params[0]):
             raise ValueError(
                 f"n was too large, we only have {len(self.params[0])} models so n must be less than that"
@@ -232,7 +234,7 @@ class SklearnAutoRegressor(BaseEstimator, RegressorMixin, CallbackInvoker):
         else:
             self.models = {}
 
-    def add_model(self, model: ModelTrainer, raise_on_exists=False):
+    def add_model(self, model: ModelTrainer, raise_on_exists=False) -> None:
         if model.name() not in self.models:
             # We override the evaluation metric on the model with the one requested at the high level
             # this makes sure everyone is operating on the same space
@@ -259,7 +261,7 @@ class SklearnAutoRegressor(BaseEstimator, RegressorMixin, CallbackInvoker):
                     f"Model type {model.name()} is already registered to be trained"
                 )
 
-    def fit(self, X: Any, y: Any | None = None):
+    def fit(self, X: Any, y: Any | None = None) -> list[Any]:
         if y is None:
             raise AssertionError("cannot regress without a target")
         if not (len(y.shape) <= 2):
@@ -291,10 +293,7 @@ class SklearnAutoRegressor(BaseEstimator, RegressorMixin, CallbackInvoker):
             if self.multi_output:
                 self.trigger_callback(
                     "on_tune_multi_output_start",
-                    {
-                        "trainer":model_trainer,
-                        "total_outputs":y.shape[-1]
-                    }
+                    {"trainer": model_trainer, "total_outputs": y.shape[-1]},
                 )
                 for i in range(y.shape[-1]):
                     tdata, best_params = model_trainer.fit_tune(X, y[:, i])

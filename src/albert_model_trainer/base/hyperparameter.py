@@ -12,7 +12,7 @@ class HyperParameterTuneSet:
     def get_valid_parameters(
         self,
         input_shape: Tuple,
-        output_shape: Tuple,
+        output_shape: Tuple | None,
         intput_ranges: Tuple,
         output_ranges: Tuple,
     ) -> dict[str, Any]:

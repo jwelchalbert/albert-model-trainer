@@ -49,7 +49,9 @@ class ModelTrainer(CallbackInvoker):
 
     def clone(self) -> "ModelTrainer":
         new_model_trainer = self.__class__(self.config)
-        new_model_trainer.model = clone_model(self.model)
+        new_model_trainer.model = (
+            clone_model(self.model) if self.model is not None else None
+        )
         return new_model_trainer
 
     def set_custom_config(self, config: Dict[str, Any]) -> None:
@@ -82,8 +84,8 @@ class ModelTrainer(CallbackInvoker):
 
     def cross_validate(
         self,
-        X: Any,
-        y: Any | None = None,
+        X: np.ndarray,
+        y: np.ndarray,
         n_splits=5,
         random_state=42,
         display_fold_progress=False,
@@ -214,6 +216,7 @@ class ModelTrainer(CallbackInvoker):
         self.trigger_callback("setup", args={"trainer": self})
 
         def build_model(config) -> None:
+            trainer = None
             try:
                 # Get a clone of the trainer so we can configure the underlying model
                 # without affecting other tune instances
@@ -245,7 +248,10 @@ class ModelTrainer(CallbackInvoker):
                 )
 
                 avg_eval_metric = metrics.get_group_metric_avg(
-                    "val", self.config.evaluation_metric
+                    "val",
+                    self.config.evaluation_metric
+                    if isinstance(self.config.evaluation_metric, str)
+                    else self.config.evaluation_metric.shortnames()[0],
                 )
 
                 logger.debug(f"Avg Metric {self.config.evaluation_metric}:")
@@ -267,12 +273,18 @@ class ModelTrainer(CallbackInvoker):
                     results[
                         self.config.evaluation_metric
                     ] = metrics.get_group_metric_avg(
-                        "val", self.config.evaluation_metric
+                        "val",
+                        self.config.evaluation_metric
+                        if isinstance(self.config.evaluation_metric, str)
+                        else self.config.evaluation_metric.shortnames()[0],
                     )
                     results[
                         f"{self.config.evaluation_metric}_std"
                     ] = metrics.get_group_metric_std(
-                        "val", self.config.evaluation_metric
+                        "val",
+                        self.config.evaluation_metric
+                        if isinstance(self.config.evaluation_metric, str)
+                        else self.config.evaluation_metric.shortnames()[0],
                     )
 
                 train.report(results)
@@ -305,6 +317,8 @@ class ModelTrainer(CallbackInvoker):
             metric=self.config.evaluation_metric,
             mode=self.config.metrics.get_metric_obj(
                 self.config.evaluation_metric
+                if isinstance(self.config.evaluation_metric, str)
+                else self.config.evaluation_metric.shortnames()[0]
             ).optimal_mode(),
         )
         # hyperopt_search = ConcurrencyLimiter(hyperopt_search, max_concurrent=4)
@@ -317,7 +331,10 @@ class ModelTrainer(CallbackInvoker):
             build_model,
             resources_per_trial={"cpu": 1},
             config=self.config.hyperparameters.get_valid_parameters(
-                X.shape, y.shape, (np.min(X), np.max(X)), (np.min(y), np.max(y))
+                X.shape,
+                y.shape if y is not None else None,
+                (np.min(X), np.max(X)),
+                (np.min(y), np.max(y)),
             ),
             search_alg=hyperopt_search,
             progress_reporter=reporter,
@@ -332,12 +349,16 @@ class ModelTrainer(CallbackInvoker):
             metric=self.config.evaluation_metric,
             mode=self.config.metrics.get_metric_obj(
                 self.config.evaluation_metric
+                if isinstance(self.config.evaluation_metric, str)
+                else self.config.evaluation_metric.shortnames()[0]
             ).optimal_mode(),
         )
         best_params = analysis.get_best_config(
             metric=self.config.evaluation_metric,
             mode=self.config.metrics.get_metric_obj(
                 self.config.evaluation_metric
+                if isinstance(self.config.evaluation_metric, str)
+                else self.config.evaluation_metric.shortnames()[0]
             ).optimal_mode(),
         )
 
