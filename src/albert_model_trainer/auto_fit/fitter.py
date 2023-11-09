@@ -5,6 +5,7 @@ from sklearn.base import BaseEstimator, RegressorMixin
 from albert_model_trainer.base.callback import Callback, CallbackInvoker
 from albert_model_trainer.base.metrics import Metric, PerformanceMetrics
 from albert_model_trainer.base.model import ModelTrainer
+from albert_model_trainer.base.model_config import ModelConfigurationBase
 from albert_model_trainer.models.model_iterator import get_all_model_trainers
 from sklearn.base import clone as clone_model
 from sklearn.pipeline import Pipeline
@@ -34,7 +35,12 @@ class ModelRegistry:
     def __init__(self, num_outputs, sort_max_first) -> None:
         self.num_outputs = num_outputs
         self.params: Dict[
-            int, List[Tuple[str, float, Dict[str, float], Dict[str, Any]]]
+            int,
+            List[
+                Tuple[
+                    str, float, Dict[str, float], Dict[str, Any], ModelConfigurationBase
+                ]
+            ],
         ] = {i: [] for i in range(num_outputs)}
         self.sort_max_first = sort_max_first
 
@@ -45,12 +51,13 @@ class ModelRegistry:
         score: float,
         metrics: dict,
         parameters: dict[str, Any],
+        model_config: ModelConfigurationBase,
     ) -> None:
         if output_idx > self.num_outputs:
             raise ValueError(
                 f"requested output idx is greater than the expected number of outputs -- got [{output_idx}] -- exp [{self.num_outputs-1}] max"
             )
-        self.params[output_idx].append((name, score, metrics, parameters))
+        self.params[output_idx].append((name, score, metrics, parameters, model_config))
 
     def get_best_params(self, return_max: bool) -> list[Any]:
         best_all = []
@@ -91,8 +98,8 @@ class ModelRegistry:
     def get_model_pipeline(
         self,
         model_name: str | Iterable[str],
-        model_params: dict | Iterable[dict],
-        scaling_columns: Iterable[int] | None = None,
+        model_params: dict[str, Any] | Iterable[dict[str, Any]],
+        scaling_columns: Iterable[int] | List[Iterable[int] | None] | None = None,
     ):
         if isinstance(model_name, str) and isinstance(model_params, dict):
             model_trainer = self.get_model_trainer(model_name)
@@ -151,12 +158,24 @@ class ModelRegistry:
         model_info = self.get_sorted_model_info(self.sort_max_first)
         param_set = model_info[nth_model]
 
-        model_names, model_scores, model_metrics, model_params = zip(*param_set)
+        # Set Expected Types Here
+        model_configs: List[ModelConfigurationBase]
+        model_names: List[str]
+        model_scores: List[float]
+        model_params: List[dict[str, Any]]
+
+        model_names, model_scores, model_metrics, model_params, model_configs = zip(
+            *param_set
+        )
 
         if len(param_set) > 1:
-            pipeline = self.get_model_pipeline(model_names, model_params)
+            pipeline = self.get_model_pipeline(
+                model_names, model_params, [x.scaling_columns for x in model_configs]
+            )
         else:
-            pipeline = self.get_model_pipeline(model_names[0], model_params[0])
+            pipeline = self.get_model_pipeline(
+                model_names[0], model_params[0], model_configs[0].scaling_columns
+            )
 
         if return_meta_data:
             return pipeline, model_names, model_scores, model_metrics
@@ -303,6 +322,7 @@ class SklearnAutoRegressor(BaseEstimator, RegressorMixin, CallbackInvoker):
                         tdata[self.evaluation_metric],
                         tdata,
                         best_params,
+                        model_trainer.config,
                     )
 
                     # In multi output cases indicate when we finish one of the outputs
@@ -322,6 +342,7 @@ class SklearnAutoRegressor(BaseEstimator, RegressorMixin, CallbackInvoker):
                     tdata[self.evaluation_metric],
                     tdata,
                     best_params,
+                    model_trainer.config,
                 )
 
             self.trigger_callback(
