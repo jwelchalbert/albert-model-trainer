@@ -11,7 +11,9 @@ from albert_model_trainer.base.model_config import (
 )
 
 import logging
-logger = logging.getLogger('albert.log')
+
+logger = logging.getLogger("albert.log")
+
 
 class ExtraTreesRegressorHyperparameterSet(HyperParameterTuneSet):
     DEFAULT_N_ESTIMATORS = tune.randint(50, 500)
@@ -20,7 +22,6 @@ class ExtraTreesRegressorHyperparameterSet(HyperParameterTuneSet):
     DEFAULT_MIN_SAMPLES_LEAF = tune.randint(1, 10)
     DEFAULT_MAX_FEATURES = tune.choice(["sqrt", "log2"])
     DEFAULT_BOOTSTRAP = tune.choice([True, False])
-    DEFAULT_WARM_START = tune.choice([True, False])
     DEFAULT_CRITERION = tune.choice(
         ["absolute_error", "squared_error", "friedman_mse", "poisson"]
     )
@@ -40,7 +41,6 @@ class ExtraTreesRegressorHyperparameterSet(HyperParameterTuneSet):
             ),
             "max_features": kwargs.get("max_features", self.DEFAULT_MAX_FEATURES),
             "bootstrap": kwargs.get("bootstrap", self.DEFAULT_BOOTSTRAP),
-            "warm_start": kwargs.get("warm_start", self.DEFAULT_WARM_START),
             "criterion": kwargs.get("criterion", self.DEFAULT_CRITERION),
             "max_leaf_nodes": kwargs.get("max_leaf_nodes", self.DEFAULT_MAX_LEAF_NODES),
             "min_impurity_decrease": kwargs.get(
