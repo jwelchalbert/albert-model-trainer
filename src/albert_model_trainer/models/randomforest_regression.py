@@ -11,7 +11,9 @@ from albert_model_trainer.base.model_config import (
 )
 
 import logging
-logger = logging.getLogger('albert.log')
+
+logger = logging.getLogger("albert.log")
+
 
 class RandomForestRegressorHyperparameterSet(HyperParameterTuneSet):
     DEFAULT_N_ESTIMATORS = tune.randint(50, 500)
@@ -23,7 +25,6 @@ class RandomForestRegressorHyperparameterSet(HyperParameterTuneSet):
     )
     DEFAULT_MAX_FEATURES = tune.choice([1.0, "sqrt", "log2"])
     DEFAULT_BOOTSTRAP = tune.choice([True, False])
-    DEFAULT_WARM_START = tune.choice([True, False])
     DEFAULT_CCP_ALPHA = tune.uniform(0.0, 0.2)
 
     def __init__(self, **kwargs) -> None:
@@ -39,7 +40,6 @@ class RandomForestRegressorHyperparameterSet(HyperParameterTuneSet):
             "criterion": kwargs.get("criterion", self.DEFAULT_CRITERION),
             "max_features": kwargs.get("max_features", self.DEFAULT_MAX_FEATURES),
             "bootstrap": kwargs.get("bootstrap", self.DEFAULT_BOOTSTRAP),
-            "warm_start": kwargs.get("warm_start", self.DEFAULT_WARM_START),
             "ccp_alpha": kwargs.get("ccp_alpha", self.DEFAULT_CCP_ALPHA),
         }
 
