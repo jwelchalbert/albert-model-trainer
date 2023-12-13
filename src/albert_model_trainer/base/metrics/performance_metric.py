@@ -132,6 +132,11 @@ class AggregatePerformanceMetrics:
         for pm in self.metrics:
             try:
                 val = pm.get_metric(metric_name)
+                if (val is None) or (np.isnan(val)):
+                    print(
+                        "One of the results was nan, skipping but this may artifically skew the results"
+                    )
+                    continue
                 vals.append(val)
             except KeyError as e:
                 logger.error(f"Unknown key requested {(str(e))}")
