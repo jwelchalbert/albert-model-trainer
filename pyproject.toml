@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "albert-model-trainer"
-version = "0.1.4"
+version = "0.1.5"
 description = "A library for doing automatic model training and hyperparameter tuning of various types of ML models"
 authors = ["Jonathan Welch <jonathan@albertinvent.com>"]
 readme = "README.md"
